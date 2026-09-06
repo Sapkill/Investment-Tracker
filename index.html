@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#005EB8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>NSE Payout Tracker</title>
+<style>
+:root{
+  --bg-main:#F5F5F5; --bg-elevated:#FFFFFF; --bg-secondary:#F0F0F0;
+  --border-color:#E0E0E0; --text-primary:#1F1F1F; --text-secondary:#666666; --text-disabled:#999999;
+  --color-success:#00A86B; --color-warning:#E8975A; --color-info:#005EB8; --color-error:#D93C3C; --color-neutral:#9B7BA6;
+  --table-alt-row:#E3F2FD; --header-bg:#005EB8; --header-text:#FFFFFF;
+  --shadow-card:0 1px 3px rgba(0,0,0,.08);
+  --tint-success:rgba(0,168,107,.10); --tint-warning:rgba(232,151,90,.12);
+  --tint-info:rgba(0,94,184,.08); --tint-error:rgba(217,60,60,.10);
+  --font:"Trebuchet MS",Verdana,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+html[data-theme="dark"]{
+  --bg-main:#0f1419; --bg-elevated:#1a2332; --bg-secondary:#1a2332;
+  --border-color:#2A3A4A; --text-primary:#E8E8E8; --text-secondary:#B0B0B0; --text-disabled:#6B7280;
+  --color-success:#50C878; --color-warning:#E8975A; --color-info:#5BA3E5; --color-error:#E85D5D; --color-neutral:#7B68A6;
+  --table-alt-row:#1a2332; --header-bg:#1a2332; --header-text:#E8E8E8;
+  --shadow-card:none;
+  --tint-success:rgba(80,200,120,.12); --tint-warning:rgba(232,151,90,.14);
+  --tint-info:rgba(91,163,229,.12); --tint-error:rgba(232,93,93,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg-main);color:var(--text-primary);font-family:var(--font);font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px 110px}
+h1,h2,h3{margin:0;text-wrap:balance}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+header{position:sticky;top:0;z-index:30;background:var(--bg-main);border-bottom:1px solid var(--border-color)}
+.hdr{max-width:1000px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.brand h1{font-size:17px;font-weight:700;letter-spacing:-.25px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .sub{font-size:12px;color:var(--text-secondary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{background:transparent;border:1px solid var(--border-color);color:var(--text-secondary);border-radius:4px;min-width:36px;height:36px;font-size:14px;font-family:var(--font);cursor:pointer;flex:none;display:grid;place-items:center;padding:0 8px}
+.iconbtn:hover{color:var(--text-primary);border-color:var(--text-disabled)}
+.iconbtn.busy{color:var(--color-info);border-color:var(--color-info)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border-color);border-top-color:var(--color-info);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--bg-elevated);border-top:1px solid var(--border-color);display:flex}
+nav.tabs button{flex:1;background:transparent;border:0;border-top:2px solid transparent;color:var(--text-secondary);font-family:var(--font);font-size:11.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:11px 2px;padding-bottom:calc(11px + env(safe-area-inset-bottom));cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--color-info);border-top-color:var(--color-info);background:var(--tint-info)}
+@media(min-width:760px){
+  nav.tabs{position:sticky;top:61px;border-top:0;border-bottom:1px solid var(--border-color);max-width:1000px;margin:0 auto;background:var(--bg-main)}
+  nav.tabs button{border-top:0;border-bottom:2px solid transparent;padding:12px 8px;flex:0 1 auto;min-width:130px}
+  nav.tabs button[aria-selected="true"]{border-bottom-color:var(--color-info);background:transparent}
+  .wrap{padding-bottom:48px}
+}
+section{padding-top:20px;display:flex;flex-direction:column;gap:16px}
+
+.card{background:var(--bg-elevated);border:1px solid var(--border-color);border-radius:8px;padding:16px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:12px}
+.card>h2{font-size:13px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-secondary)}
+.card .lede{font-size:13.5px;color:var(--text-secondary);margin:-4px 0 0}
+.card.alert{border-left:3px solid var(--color-warning)}
+.card.danger{border-left:3px solid var(--color-error)}
+
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:680px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:var(--bg-elevated);border:1px solid var(--border-color);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow-card)}
+.tile .k{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text-secondary)}
+.tile .v{font-size:20px;font-weight:700;letter-spacing:-.4px}
+.tile .m{font-size:11.5px;color:var(--text-secondary)}
+.tile.pos .v{color:var(--color-success)} .tile.neg .v{color:var(--color-error)}
+.tile.hero{grid-column:1/-1;border-left:3px solid var(--color-info)}
+.tile.hero .v{font-size:28px}
+
+.kv{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--border-color);font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv dt{color:var(--text-secondary)} .kv dd{margin:0;font-weight:600;text-align:right}
+
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.day{border:1px solid var(--border-color);border-radius:6px;padding:8px 4px;text-align:center;background:var(--bg-secondary)}
+.day .d{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-secondary)}
+.day .n{font-size:17px;font-weight:700;line-height:1.3}
+.day .s{font-size:9.5px;font-weight:600;text-transform:uppercase}
+.day.trade{background:var(--tint-success);border-color:var(--color-success)} .day.trade .s{color:var(--color-success)}
+.day.hol{background:var(--tint-warning);border-color:var(--color-warning)} .day.hol .s{color:var(--color-warning)}
+.day.off .s,.day.off .n,.day.off .d{color:var(--text-disabled)}
+.day.pay{outline:2px solid var(--color-info);outline-offset:1px}
+.day.today .n{text-decoration:underline;text-underline-offset:3px}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid;white-space:nowrap;font-family:var(--font)}
+.chip.ok{color:var(--color-success);border-color:var(--color-success);background:var(--tint-success)}
+.chip.warn{color:var(--color-warning);border-color:var(--color-warning);background:var(--tint-warning)}
+.chip.info{color:var(--color-info);border-color:var(--color-info);background:var(--tint-info)}
+.chip.bad{color:var(--color-error);border-color:var(--color-error);background:var(--tint-error)}
+.chip.mute{color:var(--text-secondary);border-color:var(--border-color);background:var(--bg-secondary)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.note{border-left:3px solid var(--color-warning);background:var(--tint-warning);padding:10px 12px;border-radius:0 6px 6px 0;font-size:13px}
+.note.info{border-left-color:var(--color-info);background:var(--tint-info)}
+.note.bad{border-left-color:var(--color-error);background:var(--tint-error)}
+.note.good{border-left-color:var(--color-success);background:var(--tint-success)}
+
+.grid2{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:560px){.grid2{grid-template-columns:1fr 1fr}}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--text-secondary)}
+input,select,textarea{font-family:var(--font);font-size:15px;color:var(--text-primary);background:var(--bg-main);border:1px solid var(--border-color);border-radius:4px;padding:10px 12px;width:100%;color-scheme:light dark}
+textarea{resize:vertical}
+input.num,input[type="number"],textarea.num{font-family:var(--mono)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--color-info);outline-offset:1px}
+.btn{font-family:var(--font);font-size:14px;font-weight:600;padding:10px 16px;border-radius:4px;border:1px solid var(--color-info);background:var(--color-info);color:#fff;cursor:pointer}
+.btn.sec{background:transparent;color:var(--color-info)}
+.btn.gh{background:transparent;color:var(--text-secondary);border-color:var(--border-color)}
+.btn.ok{background:var(--color-success);border-color:var(--color-success);color:#fff}
+.btn.warnbtn{background:var(--color-warning);border-color:var(--color-warning);color:#fff}
+.btn.sm{font-size:12.5px;padding:7px 12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-elevated)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:660px}
+thead th{background:var(--header-bg);color:var(--header-text);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:10px 12px;text-align:left;position:sticky;top:0}
+tbody td{padding:9px 12px;border-top:1px solid var(--border-color);vertical-align:middle}
+tbody tr:nth-child(even){background:var(--table-alt-row)}
+td.r,th.r{text-align:right}
+tbody tr.cur{box-shadow:inset 3px 0 0 var(--color-info)}
+.mini{font-size:11px;color:var(--text-secondary);display:block}
+.status-msg{font-size:12.5px;color:var(--text-secondary);min-height:18px}
+.status-msg.err{color:var(--color-error)} .status-msg.good{color:var(--color-success)}
+.empty{padding:28px 16px;text-align:center;color:var(--text-secondary);font-size:14px}
+.hollist{display:flex;flex-direction:column}
+.hol-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:13.5px}
+.hol-row:last-child{border-bottom:0}
+.diffbox{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:560px){.diffbox{grid-template-columns:1fr 1fr}}
+.diffcol{border:1px solid var(--border-color);border-radius:6px;padding:12px;background:var(--bg-secondary);font-size:13px}
+.diffcol h3{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);margin-bottom:8px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <div class="brand">
+      <h1 id="brandName">NSE Payout Tracker</h1>
+      <span class="sub" id="brandSub">Not connected</span>
+    </div>
+    <button class="iconbtn" id="syncBtn" title="Sync now" aria-label="Sync now">⟳</button>
+    <button class="iconbtn" id="themeBtn" title="Switch theme" aria-label="Switch theme">◐</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="setup" aria-selected="false">Setup</button>
+  <button role="tab" data-tab="week" aria-selected="true">This Week</button>
+  <button role="tab" data-tab="life" aria-selected="false">Lifecycle</button>
+  <button role="tab" data-tab="cal" aria-selected="false">Calendar</button>
+</nav>
+
+<div class="wrap">
+<div id="conflictHost"></div>
+
+<section id="tab-setup" hidden>
+  <div class="card">
+    <h2>Cloud setup</h2>
+    <p class="lede">Paste the Apps Script web app URL from your Google Sheet. Everything is stored in that Sheet; this page keeps only a read cache.</p>
+    <label>Apps Script /exec URL
+      <input id="cfgUrl" placeholder="https://script.google.com/macros/s/AKfy.../exec" spellcheck="false" autocapitalize="off">
+    </label>
+    <div class="btnrow">
+      <button class="btn" id="cfgSave">Save and sync</button>
+      <button class="btn gh" id="cfgTest">Test connection</button>
+      <button class="btn gh" id="cfgDiag">Run NSE diagnostic</button>
+    </div>
+    <div class="status-msg" id="cfgMsg"></div>
+    <div id="diagBox"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your investments</h2>
+    <p class="lede">Each tranche gets an ID. Open this page on any device with the same Sheet URL and every record, including the received markers, is there.</p>
+    <div id="invList"></div>
+    <div class="grid2">
+      <label>Open by ID<input id="loadId" class="num" placeholder="NSE-4K2M-9QX" autocapitalize="characters" spellcheck="false"></label>
+      <label>&nbsp;<button class="btn sec" id="loadBtn">Open</button></label>
+    </div>
+    <div class="status-msg" id="loadMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>Start a new investment</h2>
+    <p class="lede">Terms are fixed at creation. The week-by-week schedule is derived from the NSE calendar at render time, never stored — so when a new year's holidays arrive, every unpaid week re-computes.</p>
+    <div class="grid2">
+      <label>Label<input id="fLabel" placeholder="Tranche 1"></label>
+      <label>Principal invested (₹)<input id="fPrincipal" type="number" inputmode="decimal" step="1" placeholder="1000000"></label>
+      <label>Return per trading day (%)<input id="fRate" type="number" inputmode="decimal" step="0.001" value="0.3"></label>
+      <label>Tenure (trading days)<input id="fTenure" type="number" inputmode="numeric" step="1" value="500"></label>
+      <label>First accruing trading day<input id="fStart" type="date"></label>
+      <label>If Friday is an NSE holiday
+        <select id="fShift">
+          <option value="prev">Pay on the previous trading day</option>
+          <option value="next">Pay on the next trading day</option>
+        </select>
+      </label>
+    </div>
+    <div id="newPreview"></div>
+    <div class="btnrow">
+      <button class="btn" id="createBtn">Create investment</button>
+      <button class="btn gh" id="previewBtn">Preview terms</button>
+    </div>
+    <div class="status-msg" id="createMsg"></div>
+  </div>
+
+  <div class="card" id="currentCard" hidden>
+    <h2>Loaded investment</h2>
+    <dl id="currentDl" style="margin:0"></dl>
+    <div class="btnrow">
+      <button class="btn sec sm" id="copyIdBtn">Copy ID</button>
+      <button class="btn gh sm" id="csvBtn">Download lifecycle CSV</button>
+    </div>
+    <div class="status-msg" id="currentMsg"></div>
+  </div>
+</section>
+
+<section id="tab-week"><div id="weekBody"><div class="card"><div class="empty">Loading…</div></div></div></section>
+<section id="tab-life" hidden><div id="lifeBody"><div class="card"><div class="empty">Loading…</div></div></div></section>
+
+<section id="tab-cal" hidden>
+  <div class="card">
+    <h2>NSE trading calendar</h2>
+    <p class="lede">Holidays are pulled from the exchange by the Sheet backend on a daily timer and stored there. NSE publishes one calendar year at a time, so future years fill in as the exchange releases them; until then those weeks are marked provisional.</p>
+    <div class="chips" id="calYears"></div>
+    <div class="btnrow">
+      <button class="btn sec sm" id="calRefresh">Refresh holidays from NSE now</button>
+    </div>
+    <div class="status-msg" id="calRefreshMsg"></div>
+  </div>
+  <div id="calBody"></div>
+  <div class="card">
+    <h2>Add or replace a year by hand</h2>
+    <p class="lede">One holiday per line as <span class="num">YYYY-MM-DD, Occasion</span>. Use this to load a year NSE has circulated but the API has not yet served. A manual year is protected — the auto-fetch will not overwrite it with a thinner list.</p>
+    <div class="grid2">
+      <label>Year<input id="calYear" type="number" inputmode="numeric" placeholder="2027"></label>
+      <label>Source note<input id="calSource" placeholder="NSE circular, trading holidays 2027"></label>
+    </div>
+    <label>Holidays<textarea id="calPaste" rows="8" class="num" placeholder="2027-01-26, Republic Day&#10;2027-03-22, Holi"></textarea></label>
+    <div class="btnrow">
+      <button class="btn" id="calSaveBtn">Save calendar year</button>
+      <button class="btn gh" id="calLoadBtn">Load existing year into the box</button>
+    </div>
+    <div class="status-msg" id="calMsg"></div>
+  </div>
+</section>
+</div>
+
+<script>
+"use strict";
+
+/* ============================ safe storage ============================ */
+var MEM = {};
+function lsGet(k){ try{ var v=localStorage.getItem(k); return v===null?(k in MEM?MEM[k]:null):v; }catch(e){ return (k in MEM)?MEM[k]:null; } }
+function lsSet(k,v){ MEM[k]=v; try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+
+/* ============================ theme ============================ */
+(function(){
+  var root=document.documentElement, btn=document.getElementById("themeBtn");
+  var saved=lsGet("npt-theme");
+  if(saved!=="dark" && saved!=="light"){
+    saved = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  root.setAttribute("data-theme",saved);
+  function paint(){ btn.textContent = root.getAttribute("data-theme")==="dark" ? "☀" : "☾"; }
+  btn.addEventListener("click",function(){
+    var next = root.getAttribute("data-theme")==="dark" ? "light" : "dark";
+    root.setAttribute("data-theme",next); lsSet("npt-theme",next); paint();
+  });
+  paint();
+})();
+
+/* ============================ dates ============================ */
+var DAY=86400000;
+var DOWN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+var MONN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function iso(d){ return d.toISOString().slice(0,10); }
+function parseD(s){ return new Date(String(s).slice(0,10)+"T00:00:00Z"); }
+function addDays(d,n){ return new Date(d.getTime()+n*DAY); }
+function dow(d){ return d.getUTCDay(); }
+function fmtD(s){ var d=parseD(s); return d.getUTCDate()+" "+MONN[d.getUTCMonth()]+" "+d.getUTCFullYear(); }
+function fmtDS(s){ var d=parseD(s); return d.getUTCDate()+" "+MONN[d.getUTCMonth()]; }
+function todayISO(){ var n=new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); }
+function mondayOf(d){ var w=dow(d); return addDays(d,-(w===0?6:w-1)); }
+function inr(n){
+  if(n===null||n===undefined||isNaN(n)) return "—";
+  var neg=n<0, v=Math.abs(Math.round(n*100)/100), s=v.toFixed(2), p=s.split("."), i=p[0];
+  var last3=i.slice(-3), rest=i.slice(0,-3);
+  if(rest) last3=rest.replace(/\B(?=(\d{2})+(?!\d))/g,",")+","+last3;
+  return (neg?"−₹":"₹")+last3+"."+p[1];
+}
+function inrShort(n){
+  if(n===null||n===undefined||isNaN(n)) return "—";
+  var neg=n<0, v=Math.abs(n);
+  if(v>=1e7) return (neg?"−₹":"₹")+(v/1e7).toFixed(2)+" Cr";
+  if(v>=1e5) return (neg?"−₹":"₹")+(v/1e5).toFixed(2)+" L";
+  return inr(n);
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+/* ============================ payout engine ============================ */
+var CAL={};
+function isTradingDay(d){
+  var w=dow(d); if(w===0||w===6) return false;
+  var c=CAL[String(d.getUTCFullYear())];
+  if(!c) return true;
+  return !c.holidays[iso(d)];
+}
+function yearProvisional(d){ return !CAL[String(d.getUTCFullYear())]; }
+
+function buildSchedule(cfg){
+  var perDay=Number(cfg.principal)*(Number(cfg.ratePct)/100);
+  var order=[], map={}, cursor=parseD(cfg.startDate), counted=0, guard=0;
+  while(counted<Number(cfg.tenureDays)){
+    if(++guard>20000) break;
+    if(isTradingDay(cursor)){
+      var key=iso(mondayOf(cursor));
+      if(!map[key]){ map[key]={weekStart:key,days:[]}; order.push(key); }
+      map[key].days.push(iso(cursor));
+      counted++;
+    }
+    cursor=addDays(cursor,1);
+  }
+  var weeks=[], n=0;
+  for(var i=0;i<order.length;i++){
+    var w=map[order[i]], mon=parseD(w.weekStart), hol=[], prov=false;
+    for(var j=0;j<5;j++){
+      var d=addDays(mon,j);
+      if(yearProvisional(d)) prov=true;
+      var c=CAL[String(d.getUTCFullYear())];
+      if(c && c.holidays[iso(d)]) hol.push({date:iso(d),name:c.holidays[iso(d)]});
+    }
+    var fri=iso(addDays(mon,4)), pay=null;
+    if(cfg.shiftRule==="next"){
+      var k=addDays(mon,4), g2=0;
+      while(!isTradingDay(k) && g2++<20) k=addDays(k,1);
+      pay=iso(k);
+    }else{
+      for(var q=4;q>=0;q--){ var dd=addDays(mon,q); if(isTradingDay(dd)){ pay=iso(dd); break; } }
+      if(!pay) pay=fri;
+    }
+    weeks.push({n:++n,weekStart:w.weekStart,weekEnd:fri,tradingDays:w.days.length,accrualDates:w.days,
+      holidays:hol,payDate:pay,shifted:pay!==fri,
+      baseExpected:Math.round(w.days.length*perDay*100)/100,provisional:prov});
+  }
+  return {perDay:perDay,weeks:weeks,totalContracted:Math.round(perDay*Number(cfg.tenureDays)*100)/100};
+}
+
+function reconcile(sched,ledger){
+  var recd=0, baseRecd=0, cnt=0;
+  sched.weeks.forEach(function(w){
+    var e=ledger[w.weekStart];
+    if(e&&e.received){ recd+=Number(e.actual!=null?e.actual:w.baseExpected); baseRecd+=w.baseExpected; cnt++; }
+  });
+  var last=sched.weeks[sched.weeks.length-1], pendingExclLast=0;
+  sched.weeks.forEach(function(w){
+    if(w===last) return;
+    var e=ledger[w.weekStart];
+    if(!(e&&e.received)) pendingExclLast+=w.baseExpected;
+  });
+  var outstanding=Math.round((sched.totalContracted-recd)*100)/100;
+  var lastDone=!!(ledger[last.weekStart]&&ledger[last.weekStart].received);
+  return { received:Math.round(recd*100)/100, variance:Math.round((recd-baseRecd)*100)/100,
+    outstanding:outstanding, weeksReceived:cnt,
+    finalTrueUp: lastDone?null:Math.round((outstanding-pendingExclLast)*100)/100 };
+}
+
+/* ============================ cloud transport ============================ */
+var CFG={ url: lsGet("npt-url") || "" };
+var STATE={ investments:{}, calendars:{}, calendarMeta:null, lastSync:null, online:false };
+var INV=null, SCHED=null, lifeFilter="all", syncing=false, pendingConflict=null;
+
+function cacheWrite(){
+  lsSet("npt-cache", JSON.stringify({ investments:STATE.investments, calendars:STATE.calendars,
+    calendarMeta:STATE.calendarMeta, lastSync:STATE.lastSync, savedAt:new Date().toISOString() }));
+}
+function cacheRead(){
+  try{
+    var c=JSON.parse(lsGet("npt-cache")||"null");
+    if(c && c.investments){ STATE.investments=c.investments; STATE.calendars=c.calendars||{}; STATE.calendarMeta=c.calendarMeta||null; STATE.lastSync=c.lastSync||null; }
+  }catch(e){}
+}
+
+function apiGet(action, extra){
+  if(!CFG.url) return Promise.reject(new Error("No Apps Script URL saved."));
+  var u = CFG.url + (CFG.url.indexOf("?")<0?"?":"&") + "action=" + encodeURIComponent(action) + "&t=" + Date.now() + (extra||"");
+  return fetch(u, { method:"GET", redirect:"follow" }).then(function(r){
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+
+/* Content-Type text/plain keeps this a CORS "simple request": no preflight,
+   and the Apps Script reply is readable, so a save is confirmed rather than assumed. */
+function apiPost(payload){
+  if(!CFG.url) return Promise.reject(new Error("No Apps Script URL saved."));
+  return fetch(CFG.url, {
+    method:"POST", redirect:"follow",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).catch(function(err){
+    // Last resort: fire-and-forget so the write is at least attempted, then verify by re-reading.
+    return fetch(CFG.url, { method:"POST", mode:"no-cors",
+      headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+      .then(function(){ return { ok:null, unverified:true, error:String(err.message||err) }; });
+  });
+}
+
+function setSyncUI(state, text){
+  var b=document.getElementById("syncBtn");
+  b.classList.toggle("busy", state==="busy");
+  b.innerHTML = state==="busy" ? '<span class="spin"></span>' : "⟳";
+  document.getElementById("brandSub").textContent = text;
+}
+
+function syncStatusText(){
+  if(!CFG.url) return "Not connected — add your Sheet URL in Setup";
+  if(INV) return INV.id + " · " + (STATE.lastSync ? "synced " + STATE.lastSync : "not yet synced");
+  return STATE.lastSync ? "Synced " + STATE.lastSync : "Connected";
+}
+
+function pull(quiet){
+  if(!CFG.url){ setSyncUI("idle", syncStatusText()); return Promise.resolve(false); }
+  if(syncing) return Promise.resolve(false);
+  syncing=true; setSyncUI("busy","Syncing…");
+  return apiGet("bootstrap").then(function(res){
+    if(!res || !res.ok) throw new Error(res && res.error || "Backend returned an error.");
+    var incoming={};
+    (res.investments||[]).forEach(function(i){ incoming[i.id]=i; });
+    var conflicts=[];
+    Object.keys(STATE.investments).forEach(function(id){
+      var localRec=STATE.investments[id];
+      if(localRec._dirty && incoming[id] && Number(incoming[id].rev)!==Number(localRec._baseRev)) conflicts.push(id);
+    });
+    Object.keys(incoming).forEach(function(id){
+      var localRec=STATE.investments[id];
+      if(localRec && localRec._dirty && conflicts.indexOf(id)>=0) return;   // hold for the user
+      if(localRec && localRec._dirty) return;                                // unsynced but no clash
+      STATE.investments[id]=incoming[id];
+    });
+    STATE.calendars=res.calendars||{};
+    STATE.calendarMeta=res.calendarMeta||null;
+    STATE.lastSync=new Date().toLocaleString([], {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+    STATE.online=true;
+    applyCalendars();
+    cacheWrite();
+    if(conflicts.length) showConflict(conflicts[0], incoming[conflicts[0]]);
+    else clearConflict();
+    if(INV && STATE.investments[INV.id] && !STATE.investments[INV.id]._dirty) INV=STATE.investments[INV.id];
+    recompute();
+    return true;
+  }).catch(function(err){
+    STATE.online=false;
+    if(!quiet) toast("cfgMsg","Sync failed: "+(err.message||err),"err");
+    recompute();
+    return false;
+  }).then(function(r){ syncing=false; setSyncUI("idle", syncStatusText()); return r; });
+}
+
+function pushInvestment(rec){
+  rec._dirty=true;
+  STATE.investments[rec.id]=rec;
+  cacheWrite();
+  if(!CFG.url) return Promise.resolve({ok:false, error:"No Sheet URL saved — change kept on this device only."});
+  setSyncUI("busy","Saving…");
+  var body={ op:"saveInvestment", baseRev: rec._baseRev!=null?rec._baseRev:rec.rev,
+    investment:{ id:rec.id,label:rec.label,principal:rec.principal,ratePct:rec.ratePct,
+      tenureDays:rec.tenureDays,startDate:rec.startDate,shiftRule:rec.shiftRule,
+      createdAt:rec.createdAt,ledger:rec.ledger } };
+  return apiPost(body).then(function(res){
+    if(res && res.conflict){ showConflict(rec.id, res.server); return res; }
+    if(res && res.ok){
+      rec.rev=res.rev; rec._baseRev=res.rev; rec.updatedAt=res.updatedAt; delete rec._dirty;
+      STATE.lastSync=new Date().toLocaleString([], {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+      cacheWrite();
+    }
+    return res;
+  }).catch(function(err){ return {ok:false, error:String(err.message||err)}; })
+    .then(function(res){ setSyncUI("idle", syncStatusText()); return res; });
+}
+
+function toast(elId, text, cls){
+  var el=document.getElementById(elId);
+  if(!el) return;
+  el.textContent=text;
+  el.className="status-msg" + (cls?" "+cls:"");
+}
+
+/* ============================ conflict resolution ============================ */
+function showConflict(id, serverRec){
+  pendingConflict={ id:id, server:serverRec };
+  var localRec=STATE.investments[id];
+  var host=document.getElementById("conflictHost");
+  function summary(rec){
+    if(!rec) return "<em>missing</em>";
+    var led=rec.ledger||{};
+    var marked=Object.keys(led).filter(function(k){ return led[k] && led[k].received; });
+    var total=marked.reduce(function(a,k){ return a+Number(led[k].actual||0); },0);
+    return "<div class='kv'><dt>Revision</dt><dd class='num'>"+(rec.rev||"—")+"</dd></div>"+
+           "<div class='kv'><dt>Weeks marked</dt><dd class='num'>"+marked.length+"</dd></div>"+
+           "<div class='kv'><dt>Total recorded</dt><dd class='num'>"+inr(total)+"</dd></div>"+
+           "<div class='kv'><dt>Last change</dt><dd class='num'>"+(rec.updatedAt?String(rec.updatedAt).slice(0,16).replace("T"," "):"—")+"</dd></div>";
+  }
+  host.innerHTML =
+    '<div class="card danger" style="margin-top:16px">'+
+      '<h2>Two versions of '+esc(id)+'</h2>'+
+      '<p class="lede">This device has unsaved changes and the Sheet also changed since your copy was loaded. Nothing has been overwritten. Pick which version survives — the other is discarded.</p>'+
+      '<div class="diffbox">'+
+        '<div class="diffcol"><h3>On this device</h3>'+summary(localRec)+'</div>'+
+        '<div class="diffcol"><h3>In the Sheet</h3>'+summary(serverRec)+'</div>'+
+      '</div>'+
+      '<div class="btnrow">'+
+        '<button class="btn warnbtn" id="cfKeepLocal">Keep this device, overwrite the Sheet</button>'+
+        '<button class="btn sec" id="cfKeepServer">Keep the Sheet, discard local changes</button>'+
+      '</div>'+
+      '<div class="status-msg" id="cfMsg"></div>'+
+    '</div>';
+  document.getElementById("cfKeepLocal").addEventListener("click",function(){
+    var rec=STATE.investments[id];
+    rec._baseRev = serverRec ? serverRec.rev : rec.rev;
+    toast("cfMsg","Overwriting the Sheet…");
+    pushInvestment(rec).then(function(res){
+      if(res && res.ok){ clearConflict(); recompute(); toast("cfgMsg","Sheet updated from this device.","good"); }
+      else toast("cfMsg","Still failing: "+(res&&res.error||"unknown"),"err");
+    });
+  });
+  document.getElementById("cfKeepServer").addEventListener("click",function(){
+    STATE.investments[id]=serverRec;
+    if(INV && INV.id===id) INV=serverRec;
+    clearConflict(); cacheWrite(); recompute();
+    toast("cfgMsg","Local changes discarded; the Sheet version is now loaded.","good");
+  });
+  window.scrollTo(0,0);
+}
+function clearConflict(){ pendingConflict=null; document.getElementById("conflictHost").innerHTML=""; }
+
+/* ============================ calendars ============================ */
+var SEED_CAL={"2026":{year:2026,source:"Seeded with the app — NSE trading holidays 2026",status:"seed",holidays:{
+"2026-01-15":"Municipal Corporation Election (Maharashtra)","2026-01-26":"Republic Day","2026-02-15":"Mahashivratri (Sunday)",
+"2026-03-03":"Holi","2026-03-21":"Id-Ul-Fitr (Saturday)","2026-03-26":"Shri Ram Navami","2026-03-31":"Shri Mahavir Jayanti",
+"2026-04-03":"Good Friday","2026-04-14":"Dr. Baba Saheb Ambedkar Jayanti","2026-05-01":"Maharashtra Day","2026-05-28":"Bakri Id",
+"2026-06-26":"Muharram","2026-08-15":"Independence Day (Saturday)","2026-09-14":"Ganesh Chaturthi","2026-10-02":"Mahatma Gandhi Jayanti",
+"2026-10-20":"Dussehra","2026-11-08":"Diwali Laxmi Pujan (Sunday, Muhurat session only)","2026-11-10":"Diwali-Balipratipada",
+"2026-11-24":"Prakash Gurpurb Sri Guru Nanak Dev","2026-12-25":"Christmas"}}};
+
+function applyCalendars(){
+  CAL={};
+  Object.keys(SEED_CAL).forEach(function(y){
+    CAL[y]={year:SEED_CAL[y].year,source:SEED_CAL[y].source,status:"seed",holidays:Object.assign({},SEED_CAL[y].holidays)};
+  });
+  Object.keys(STATE.calendars||{}).forEach(function(y){
+    var c=STATE.calendars[y];
+    if(c && c.holidays && Object.keys(c.holidays).length) CAL[y]=c;
+  });
+}
+
+/* ============================ tabs ============================ */
+var tabBtns=[].slice.call(document.querySelectorAll("nav.tabs button"));
+function show(name){
+  tabBtns.forEach(function(b){ b.setAttribute("aria-selected", b.dataset.tab===name?"true":"false"); });
+  ["setup","week","life","cal"].forEach(function(t){ document.getElementById("tab-"+t).hidden = t!==name; });
+  window.scrollTo(0,0);
+  if(name==="cal") renderCal();
+}
+tabBtns.forEach(function(b){ b.addEventListener("click",function(){ show(b.dataset.tab); }); });
+
+/* ============================ boot ============================ */
+document.getElementById("fStart").value=todayISO();
+document.getElementById("cfgUrl").value=CFG.url;
+cacheRead();
+applyCalendars();
+(function(){
+  var last=lsGet("npt-last-id");
+  if(last && STATE.investments[last]) INV=STATE.investments[last];
+  recompute();
+  if(!CFG.url) show("setup");
+  pull(true);
+})();
+
+document.getElementById("syncBtn").addEventListener("click",function(){ pull(false); });
+
+/* ============================ config handlers ============================ */
+function normaliseUrl(u){
+  u=String(u||"").trim();
+  if(!u) return "";
+  if(u.indexOf("http")!==0) return u;
+  return u.replace(/\/+$/,"");
+}
+document.getElementById("cfgSave").addEventListener("click",function(){
+  var u=normaliseUrl(document.getElementById("cfgUrl").value);
+  if(!u){ toast("cfgMsg","Paste the /exec URL first.","err"); return; }
+  if(u.indexOf("/exec")<0) toast("cfgMsg","Saved, but that URL does not end in /exec — deploy the web app and copy the exec link.","err");
+  CFG.url=u; lsSet("npt-url",u);
+  pull(false).then(function(ok){ if(ok) toast("cfgMsg","Connected. "+Object.keys(STATE.investments).length+" investment(s) and "+Object.keys(STATE.calendars).length+" calendar year(s) loaded.","good"); });
+});
+document.getElementById("cfgTest").addEventListener("click",function(){
+  var u=normaliseUrl(document.getElementById("cfgUrl").value);
+  if(!u){ toast("cfgMsg","Paste a URL first.","err"); return; }
+  var saved=CFG.url; CFG.url=u;
+  toast("cfgMsg","Testing…");
+  apiGet("ping").then(function(r){
+    toast("cfgMsg", r&&r.ok ? "Reachable. Server time "+r.serverTime : "Responded, but not as expected.", r&&r.ok?"good":"err");
+    CFG.url=saved;
+  }).catch(function(e){
+    toast("cfgMsg","Unreachable: "+e.message+". Check the deployment is set to Anyone.","err");
+    CFG.url=saved;
+  });
+});
+document.getElementById("cfgDiag").addEventListener("click",function(){
+  var box=document.getElementById("diagBox");
+  toast("cfgMsg","Asking the backend to try NSE…");
+  apiGet("diag").then(function(r){
+    var d=r.diagnostics||{};
+    box.innerHTML='<div class="note info"><strong>NSE reachability from Google\'s servers</strong><br>'+
+      (d.checks||[]).map(function(c){ return (c.ok?"✓ ":"✕ ")+esc(c.step)+" — "+esc(c.detail); }).join("<br>")+
+      '<br><br>Calendar years in the Sheet: '+esc((d.calendarsInSheet||[]).join(", ")||"none")+
+      '<br>Investments in the Sheet: '+esc(String(d.investmentsInSheet))+
+      '<br>Daily trigger installed: '+((d.meta&&d.meta.triggerInstalled)?"yes":"no — run setup() in the Apps Script editor")+'</div>';
+    toast("cfgMsg","Diagnostic complete.","good");
+  }).catch(function(e){ toast("cfgMsg","Diagnostic failed: "+e.message,"err"); });
+});
+
+/* ============================ investment handlers ============================ */
+function newId(){
+  var A="ACDEFGHJKLMNPQRTUVWXY3479";
+  function blk(n){ var s=""; for(var i=0;i<n;i++) s+=A[Math.floor(Math.random()*A.length)]; return s; }
+  return "NSE-"+blk(4)+"-"+blk(3);
+}
+function readForm(){
+  return { label:document.getElementById("fLabel").value.trim()||"Untitled investment",
+    principal:Number(document.getElementById("fPrincipal").value),
+    ratePct:Number(document.getElementById("fRate").value),
+    tenureDays:Math.round(Number(document.getElementById("fTenure").value)),
+    startDate:document.getElementById("fStart").value,
+    shiftRule:document.getElementById("fShift").value };
+}
+function validate(c){
+  if(!(c.principal>0)) return "Enter the principal invested.";
+  if(!(c.ratePct>0)) return "Enter a positive daily return.";
+  if(!(c.tenureDays>0&&c.tenureDays<=5000)) return "Tenure must be between 1 and 5000 trading days.";
+  if(!c.startDate) return "Pick the first accruing trading day.";
+  return null;
+}
+document.getElementById("previewBtn").addEventListener("click",function(){
+  var c=readForm(), err=validate(c), box=document.getElementById("newPreview");
+  if(err){ box.innerHTML='<div class="note">'+esc(err)+'</div>'; return; }
+  var s=buildSchedule(c), prov=s.weeks.filter(function(w){ return w.provisional; }).length;
+  box.innerHTML='<div class="note info"><strong>'+inr(s.perDay)+' per trading day</strong> · '+s.weeks.length+
+    ' payout weeks · first payout '+fmtD(s.weeks[0].payDate)+' · final payout '+fmtD(s.weeks[s.weeks.length-1].payDate)+
+    ' · lifetime '+inr(s.totalContracted)+
+    (prov?'<br><span style="color:var(--color-warning)">'+prov+' weeks fall in years with no NSE calendar yet — those dates will move once the exchange publishes them.</span>':'')+'</div>';
+});
+document.getElementById("createBtn").addEventListener("click",function(){
+  var c=readForm(), err=validate(c);
+  if(err){ toast("createMsg",err,"err"); return; }
+  var id=newId();
+  var rec=Object.assign({ id:id, ledger:{}, createdAt:new Date().toISOString(), rev:0, _baseRev:null }, c);
+  toast("createMsg","Creating "+id+"…");
+  STATE.investments[id]=rec; INV=rec; lsSet("npt-last-id",id);
+  pushInvestment(rec).then(function(res){
+    if(res && res.ok) toast("createMsg","Created "+id+" and saved to your Sheet.","good");
+    else if(res && res.unverified) toast("createMsg","Created "+id+", but the save could not be confirmed. Press sync to verify.","err");
+    else toast("createMsg","Created "+id+" locally. Save to Sheet failed: "+(res&&res.error||"unknown"),"err");
+    recompute(); show("week");
+  });
+});
+document.getElementById("loadBtn").addEventListener("click",function(){ openById(document.getElementById("loadId").value); });
+document.getElementById("loadId").addEventListener("keydown",function(e){ if(e.key==="Enter") openById(this.value); });
+function openById(id){
+  id=String(id||"").trim().toUpperCase();
+  if(!id){ toast("loadMsg","Enter an investment ID.","err"); return; }
+  if(!STATE.investments[id]){ toast("loadMsg","No investment "+id+" in the Sheet. Press sync if you created it elsewhere.","err"); return; }
+  INV=STATE.investments[id]; lsSet("npt-last-id",id);
+  toast("loadMsg",""); recompute(); show("week");
+}
+document.getElementById("copyIdBtn").addEventListener("click",function(){
+  if(!INV) return;
+  if(navigator.clipboard) navigator.clipboard.writeText(INV.id).then(function(){ toast("currentMsg","Copied "+INV.id,"good"); },function(){ toast("currentMsg",INV.id); });
+  else toast("currentMsg",INV.id);
+});
+document.getElementById("csvBtn").addEventListener("click",function(){
+  if(!INV||!SCHED) return;
+  var r=reconcile(SCHED,INV.ledger);
+  var rows=["Week,Week start,Week end,Trading days,Pay date,Pay date shifted,Holidays in week,Expected,Received,Variance,Status,Note"];
+  SCHED.weeks.forEach(function(w,i){
+    var e=INV.ledger[w.weekStart]||null, got=e&&e.received?Number(e.actual):null;
+    var isFinal=i===SCHED.weeks.length-1;
+    var exp=(isFinal&&r.finalTrueUp!==null)?r.finalTrueUp:w.baseExpected;
+    rows.push([w.n,w.weekStart,w.weekEnd,w.tradingDays,w.payDate,w.shifted?"yes":"no",
+      '"'+w.holidays.map(function(h){return h.date+" "+h.name;}).join("; ")+'"',
+      exp.toFixed(2), got===null?"":got.toFixed(2), got===null?"":(got-w.baseExpected).toFixed(2),
+      e&&e.received?"Received":"Pending", '"'+String((e&&e.note)||"").replace(/"/g,"'")+'"'].join(","));
+  });
+  var blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8;"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=INV.id+"-lifecycle.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast("currentMsg","CSV downloaded.","good");
+});
+
+/* ============================ render ============================ */
+function recompute(){
+  SCHED = INV ? buildSchedule(INV) : null;
+  setSyncUI(syncing?"busy":"idle", syncStatusText());
+  document.getElementById("brandName").textContent = INV ? (INV.label||"NSE Payout Tracker") : "NSE Payout Tracker";
+  renderInvList(); renderCurrent(); renderWeek(); renderLife();
+  if(!document.getElementById("tab-cal").hidden) renderCal();
+}
+
+function renderInvList(){
+  var host=document.getElementById("invList");
+  var ids=Object.keys(STATE.investments);
+  if(!ids.length){ host.innerHTML='<div class="note info">No investments yet. Create one below — it saves straight to your Sheet.</div>'; return; }
+  host.innerHTML='<div class="chips">'+ids.map(function(id){
+    var r=STATE.investments[id];
+    return '<button class="chip '+(INV&&INV.id===id?"info":"mute")+'" data-open="'+esc(id)+'" style="cursor:pointer">'+
+      esc(r.label||id)+' · '+esc(id)+(r._dirty?' · unsynced':'')+'</button>';
+  }).join("")+'</div>';
+  [].slice.call(host.querySelectorAll("[data-open]")).forEach(function(b){
+    b.addEventListener("click",function(){ openById(b.dataset.open); });
+  });
+}
+
+function renderCurrent(){
+  var card=document.getElementById("currentCard");
+  if(!INV||!SCHED){ card.hidden=true; return; }
+  card.hidden=false;
+  var rows=[
+    ["Investment ID",INV.id],
+    ["Principal",inr(INV.principal)],
+    ["Accrual",INV.ratePct+"% per trading day = "+inr(SCHED.perDay)+"/day"],
+    ["Tenure",INV.tenureDays+" trading days over "+SCHED.weeks.length+" payout weeks"],
+    ["First accruing day",fmtD(SCHED.weeks[0].accrualDates[0])],
+    ["Final payout",fmtD(SCHED.weeks[SCHED.weeks.length-1].payDate)],
+    ["Contracted lifetime payout",inr(SCHED.totalContracted)],
+    ["Friday-holiday rule",INV.shiftRule==="next"?"Next trading day":"Previous trading day"],
+    ["Sheet revision",(INV.rev||"—")+(INV._dirty?" (local changes not yet saved)":"")]
+  ];
+  document.getElementById("currentDl").innerHTML=rows.map(function(x){
+    return '<div class="kv"><dt>'+esc(x[0])+'</dt><dd class="num">'+esc(x[1])+'</dd></div>';
+  }).join("");
+}
+
+function currentIndex(){
+  if(!SCHED) return -1;
+  var t=todayISO(), key=iso(mondayOf(parseD(t)));
+  for(var i=0;i<SCHED.weeks.length;i++) if(SCHED.weeks[i].weekStart===key) return i;
+  if(key<SCHED.weeks[0].weekStart) return 0;
+  return SCHED.weeks.length-1;
+}
+
+function renderWeek(){
+  var host=document.getElementById("weekBody");
+  if(!INV||!SCHED){
+    host.innerHTML='<div class="card"><div class="empty">No investment loaded.<br><br><button class="btn sec sm" id="goSetup">Go to Setup</button></div></div>';
+    var g=document.getElementById("goSetup"); if(g) g.addEventListener("click",function(){ show("setup"); });
+    return;
+  }
+  var t=todayISO(), idx=currentIndex(), w=SCHED.weeks[idx], r=reconcile(SCHED,INV.ledger);
+  var entry=INV.ledger[w.weekStart]||null, mon=parseD(w.weekStart);
+  var isFinal=idx===SCHED.weeks.length-1;
+  var expected=(isFinal&&r.finalTrueUp!==null)?r.finalTrueUp:w.baseExpected;
+  var before=t<SCHED.weeks[0].weekStart, after=t>SCHED.weeks[SCHED.weeks.length-1].weekEnd;
+
+  var strip="";
+  for(var i=0;i<5;i++){
+    var d=addDays(mon,i), ds=iso(d), cls=[], lab;
+    var accrues=w.accrualDates.indexOf(ds)>=0;
+    var holName=(CAL[String(d.getUTCFullYear())]||{holidays:{}}).holidays[ds];
+    if(holName){ cls.push("hol"); lab="Holiday"; }
+    else if(accrues){ cls.push("trade"); lab="Accrues"; }
+    else { cls.push("off"); lab=yearProvisional(d)?"Assumed":"No accrual"; }
+    if(ds===w.payDate) cls.push("pay");
+    if(ds===t) cls.push("today");
+    strip+='<div class="day '+cls.join(" ")+'"><div class="d">'+DOWN[dow(d)]+'</div><div class="n num">'+d.getUTCDate()+'</div><div class="s">'+lab+'</div></div>';
+  }
+
+  var holChips = w.holidays.length
+    ? '<div class="chips">'+w.holidays.map(function(h){ return '<span class="chip warn">'+fmtDS(h.date)+" · "+esc(h.name)+'</span>'; }).join("")+'</div>'
+    : '<div class="chips"><span class="chip ok">No NSE holiday this week</span></div>';
+
+  var flags=[];
+  if(w.shifted) flags.push('<span class="chip info">Payout moved to '+fmtDS(w.payDate)+' — Friday is a holiday</span>');
+  if(w.provisional) flags.push('<span class="chip warn">Provisional — NSE has not published this year</span>');
+  if(isFinal) flags.push('<span class="chip info">Final week — carries the true-up</span>');
+  if(INV._dirty) flags.push('<span class="chip bad">Unsynced changes on this device</span>');
+
+  var arrears=SCHED.weeks.filter(function(x,i){
+    return i<idx && x.payDate<t && !(INV.ledger[x.weekStart]&&INV.ledger[x.weekStart].received);
+  });
+
+  var status = entry&&entry.received
+    ? '<span class="chip ok">Received '+inr(entry.actual)+(entry.on?" on "+fmtDS(entry.on):"")+'</span>'
+    : (t>w.payDate ? '<span class="chip bad">Overdue — payout date has passed</span>' : '<span class="chip mute">Awaiting payout</span>');
+
+  var banner="";
+  if(before) banner='<div class="note info">Accrual begins '+fmtD(SCHED.weeks[0].accrualDates[0])+'. Showing week 1.</div>';
+  else if(after) banner='<div class="note info">The tenure ended '+fmtD(SCHED.weeks[SCHED.weeks.length-1].payDate)+'. Showing the final week.</div>';
+
+  host.innerHTML = banner+
+    '<div class="tiles">'+
+      '<div class="tile hero"><div class="k">Expected this Friday</div><div class="v num">'+inr(expected)+'</div>'+
+        '<div class="m">'+w.tradingDays+' trading day'+(w.tradingDays===1?"":"s")+' × '+inr(SCHED.perDay)+' · pays '+fmtD(w.payDate)+
+        (isFinal&&r.finalTrueUp!==null&&Math.abs(r.finalTrueUp-w.baseExpected)>0.5?' · includes a '+inr(r.finalTrueUp-w.baseExpected)+' true-up':'')+'</div></div>'+
+      '<div class="tile"><div class="k">Week</div><div class="v num">'+w.n+' / '+SCHED.weeks.length+'</div><div class="m">'+fmtDS(w.weekStart)+' – '+fmtDS(w.weekEnd)+'</div></div>'+
+      '<div class="tile"><div class="k">Received to date</div><div class="v num">'+inrShort(r.received)+'</div><div class="m">'+r.weeksReceived+' week'+(r.weeksReceived===1?"":"s")+' marked</div></div>'+
+      '<div class="tile '+(r.variance>0.5?"pos":(r.variance<-0.5?"neg":""))+'"><div class="k">Running variance</div><div class="v num">'+(Math.abs(r.variance)<0.5?"Nil":inr(r.variance))+'</div><div class="m">on paid weeks</div></div>'+
+      '<div class="tile"><div class="k">Still to come</div><div class="v num">'+inrShort(r.outstanding)+'</div><div class="m">of '+inrShort(SCHED.totalContracted)+'</div></div>'+
+    '</div>'+
+    '<div class="card"><h2>Week '+w.n+' · '+fmtD(w.weekStart)+' – '+fmtD(w.weekEnd)+'</h2>'+
+      '<div class="strip">'+strip+'</div>'+holChips+
+      (flags.length?'<div class="chips">'+flags.join("")+'</div>':"")+
+      '<div class="chips">'+status+'</div></div>'+
+    '<div class="card"><h2>'+(entry&&entry.received?"Amend this week":"Mark as received")+'</h2>'+
+      '<p class="lede">Enter what actually landed. Over or under is kept as-is and carried in the running variance; the final week absorbs the difference so the lifetime total still comes to '+inr(SCHED.totalContracted)+'.</p>'+
+      '<div class="grid2">'+
+        '<label>Amount received (₹)<input id="mkAmt" type="number" inputmode="decimal" step="0.01" value="'+(entry&&entry.actual!=null?entry.actual:expected)+'"></label>'+
+        '<label>Date received<input id="mkOn" type="date" value="'+((entry&&entry.on)||w.payDate)+'"></label>'+
+      '</div>'+
+      '<label>Note (optional)<input id="mkNote" value="'+esc((entry&&entry.note)||"")+'" placeholder="Short by one day — Ganesh Chaturthi"></label>'+
+      '<div class="btnrow">'+
+        '<button class="btn ok" id="mkBtn">'+(entry&&entry.received?"Update":"Mark as received")+'</button>'+
+        (entry&&entry.received?'<button class="btn gh" id="unmkBtn">Un-mark</button>':"")+
+        '<button class="btn gh" id="mkReset">Reset to expected</button>'+
+      '</div><div class="status-msg" id="mkMsg"></div></div>'+
+    (arrears.length?
+    '<div class="card alert"><h2>Earlier weeks not yet marked</h2>'+
+      '<p class="lede">'+arrears.length+' week'+(arrears.length===1?"":"s")+' passed their payout date without being recorded.</p>'+
+      '<div class="hollist">'+arrears.slice(-8).map(function(x){
+        return '<div class="hol-row"><div>Week '+x.n+' <span class="mini">paid '+fmtD(x.payDate)+' · '+x.tradingDays+' days</span></div>'+
+          '<div style="display:flex;gap:8px;align-items:center"><span class="num">'+inr(x.baseExpected)+'</span>'+
+          '<button class="btn ok sm" data-quick="'+x.weekStart+'">Mark</button></div></div>';
+      }).join("")+'</div></div>':"");
+
+  function saveLedger(key, value, msgId){
+    var rec=STATE.investments[INV.id]||INV;
+    if(value===null) delete rec.ledger[key]; else rec.ledger[key]=value;
+    if(rec._baseRev==null) rec._baseRev=rec.rev;
+    toast(msgId,"Saving to your Sheet…");
+    pushInvestment(rec).then(function(res){
+      if(res && res.ok) toast(msgId,"Saved. Sheet revision "+res.rev+".","good");
+      else if(res && res.conflict) toast(msgId,"Held back — the Sheet changed elsewhere. Resolve it at the top of the page.","err");
+      else if(res && res.unverified) toast(msgId,"Sent, but not confirmed. Press sync to verify it landed.","err");
+      else toast(msgId,"Kept on this device only: "+(res&&res.error||"offline"),"err");
+      INV=rec; recompute();
+    });
+  }
+  var mk=document.getElementById("mkBtn");
+  if(mk) mk.addEventListener("click",function(){
+    var amt=Number(document.getElementById("mkAmt").value);
+    if(isNaN(amt)){ toast("mkMsg","Enter a number.","err"); return; }
+    saveLedger(w.weekStart,{ received:true, actual:amt,
+      on:document.getElementById("mkOn").value||w.payDate,
+      note:document.getElementById("mkNote").value||"" },"mkMsg");
+  });
+  var un=document.getElementById("unmkBtn");
+  if(un) un.addEventListener("click",function(){ saveLedger(w.weekStart,null,"mkMsg"); });
+  var rs=document.getElementById("mkReset");
+  if(rs) rs.addEventListener("click",function(){ document.getElementById("mkAmt").value=expected; });
+  [].slice.call(host.querySelectorAll("[data-quick]")).forEach(function(b){
+    b.addEventListener("click",function(){
+      var k=b.dataset.quick, ww=SCHED.weeks.filter(function(x){ return x.weekStart===k; })[0];
+      saveLedger(k,{ received:true, actual:ww.baseExpected, on:ww.payDate, note:"" },"mkMsg");
+    });
+  });
+}
+
+function renderLife(){
+  var host=document.getElementById("lifeBody");
+  if(!INV||!SCHED){ host.innerHTML='<div class="card"><div class="empty">No investment loaded.</div></div>'; return; }
+  var r=reconcile(SCHED,INV.ledger), t=todayISO(), curIdx=currentIndex();
+  var provCount=SCHED.weeks.filter(function(w){ return w.provisional; }).length;
+  var shortCount=SCHED.weeks.filter(function(w){ return w.tradingDays<5; }).length;
+  var sumBase=SCHED.weeks.reduce(function(a,w){ return a+w.baseExpected; },0);
+  var identity=Math.abs(sumBase-SCHED.totalContracted)<1;
+  var filters=[["all","All "+SCHED.weeks.length],["pending","Pending"],["received","Received"],["short","Holiday-shortened "+shortCount]];
+  var cum=0, rows="";
+  SCHED.weeks.forEach(function(w,i){
+    var e=INV.ledger[w.weekStart]||null, got=e&&e.received?Number(e.actual):null;
+    if(got!==null) cum+=got;
+    var isFinal=i===SCHED.weeks.length-1;
+    var exp=(isFinal&&r.finalTrueUp!==null)?r.finalTrueUp:w.baseExpected;
+    var vr=got===null?null:Math.round((got-w.baseExpected)*100)/100;
+    var keep = lifeFilter==="all" || (lifeFilter==="pending"&&!(e&&e.received)) ||
+               (lifeFilter==="received"&&e&&e.received) || (lifeFilter==="short"&&w.tradingDays<5);
+    if(!keep) return;
+    var st = e&&e.received ? '<span class="chip ok">Received</span>'
+      : (w.payDate<t ? '<span class="chip bad">Overdue</span>'
+      : (i===curIdx ? '<span class="chip info">This week</span>' : '<span class="chip mute">Scheduled</span>'));
+    rows+='<tr'+(i===curIdx?' class="cur"':'')+'>'+
+      '<td class="num">'+w.n+'</td>'+
+      '<td>'+fmtDS(w.weekStart)+' – '+fmtDS(w.weekEnd)+'<span class="mini">'+parseD(w.weekStart).getUTCFullYear()+(w.provisional?' · provisional':'')+'</span></td>'+
+      '<td class="num r">'+w.tradingDays+'</td>'+
+      '<td>'+fmtDS(w.payDate)+(w.shifted?'<span class="mini">moved from Fri</span>':'')+
+        (w.holidays.length?'<span class="mini">'+esc(w.holidays.map(function(h){ return h.name; }).join("; "))+'</span>':'')+'</td>'+
+      '<td class="num r">'+inr(exp)+(isFinal&&Math.abs(exp-w.baseExpected)>0.5?'<span class="mini">base '+inr(w.baseExpected)+'</span>':'')+'</td>'+
+      '<td class="num r">'+(got===null?'—':inr(got))+'</td>'+
+      '<td class="num r" style="color:'+(vr===null||Math.abs(vr)<0.5?'var(--text-secondary)':(vr>0?'var(--color-success)':'var(--color-error)'))+'">'+(vr===null?'—':(Math.abs(vr)<0.5?'nil':inr(vr)))+'</td>'+
+      '<td class="num r">'+(got===null?'—':inrShort(cum))+'</td>'+
+      '<td>'+st+(e&&e.note?'<span class="mini">'+esc(e.note)+'</span>':'')+'</td></tr>';
+  });
+  host.innerHTML=
+    '<div class="tiles">'+
+      '<div class="tile"><div class="k">Contracted</div><div class="v num">'+inrShort(SCHED.totalContracted)+'</div><div class="m">'+INV.tenureDays+' days × '+inr(SCHED.perDay)+'</div></div>'+
+      '<div class="tile"><div class="k">Received</div><div class="v num">'+inrShort(r.received)+'</div><div class="m">'+r.weeksReceived+' of '+SCHED.weeks.length+' weeks</div></div>'+
+      '<div class="tile"><div class="k">Outstanding</div><div class="v num">'+inrShort(r.outstanding)+'</div><div class="m">'+(SCHED.weeks.length-r.weeksReceived)+' weeks to go</div></div>'+
+      '<div class="tile '+(r.variance>0.5?"pos":(r.variance<-0.5?"neg":""))+'"><div class="k">Running variance</div><div class="v num">'+(Math.abs(r.variance)<0.5?"Nil":inr(r.variance))+'</div><div class="m">'+(r.finalTrueUp!==null?'final week trues up to '+inr(r.finalTrueUp):'settled')+'</div></div>'+
+    '</div>'+
+    '<div class="card"><h2>Integrity checks</h2><div class="chips">'+
+      '<span class="chip '+(identity?"ok":"bad")+'">'+(identity?"Week expecteds sum exactly to the contracted total":"Schedule does not reconcile")+'</span>'+
+      '<span class="chip mute">'+SCHED.weeks.reduce(function(a,w){ return a+w.tradingDays; },0)+' trading days scheduled</span>'+
+      '<span class="chip '+(shortCount?"warn":"mute")+'">'+shortCount+' holiday-shortened weeks</span>'+
+      (provCount?'<span class="chip warn">'+provCount+' weeks provisional</span>':'<span class="chip ok">Every week sits on a published NSE calendar</span>')+
+    '</div>'+
+    (provCount?'<div class="note">Provisional weeks assume Monday–Friday with no holidays, because NSE has not released those years yet. Each year the exchange publishes, the daily sync pulls it in and these weeks re-compute — which will push the final payout date later, not earlier.</div>':'')+
+    '</div>'+
+    '<div class="card"><h2>Week by week</h2>'+
+      '<div class="chips">'+filters.map(function(f){ return '<button class="chip '+(lifeFilter===f[0]?"info":"mute")+'" data-f="'+f[0]+'" style="cursor:pointer">'+f[1]+'</button>'; }).join("")+'</div>'+
+      '<div class="scroll"><table><thead><tr><th class="r">#</th><th>Week</th><th class="r">Days</th><th>Pays on</th><th class="r">Expected</th><th class="r">Received</th><th class="r">Variance</th><th class="r">Cumulative</th><th>Status</th></tr></thead>'+
+      '<tbody>'+(rows||'<tr><td colspan="9" class="empty">No weeks match this filter.</td></tr>')+'</tbody></table></div></div>';
+  [].slice.call(host.querySelectorAll("[data-f]")).forEach(function(b){
+    b.addEventListener("click",function(){ lifeFilter=b.dataset.f; renderLife(); });
+  });
+}
+
+function yearsInPlay(){
+  var ys={};
+  if(SCHED) SCHED.weeks.forEach(function(w){ ys[parseD(w.weekStart).getUTCFullYear()]=true; ys[parseD(w.weekEnd).getUTCFullYear()]=true; });
+  Object.keys(CAL).forEach(function(y){ ys[y]=true; });
+  return Object.keys(ys).map(Number).sort();
+}
+function renderCal(){
+  var chips=document.getElementById("calYears"), body=document.getElementById("calBody");
+  var ys=yearsInPlay();
+  var meta=STATE.calendarMeta||{};
+  chips.innerHTML = (ys.length? ys.map(function(y){
+    var c=CAL[String(y)];
+    return '<span class="chip '+(c?"ok":"warn")+'">'+y+' · '+(c?Object.keys(c.holidays).length+" holidays":"not published yet")+'</span>';
+  }).join("") : '<span class="chip mute">No investment loaded</span>')+
+  '<span class="chip '+(meta.triggerInstalled?"ok":"warn")+'">daily auto-refresh '+(meta.triggerInstalled?"on":"not installed")+'</span>'+
+  (meta.lastFetchAt?'<span class="chip mute">last NSE pull '+esc(String(meta.lastFetchAt).slice(0,16).replace("T"," "))+'</span>':'');
+
+  body.innerHTML = ys.map(function(y){
+    var c=CAL[String(y)];
+    if(!c) return '<div class="card alert"><h2>'+y+'</h2><div class="note"><strong>NSE has not published '+y+' yet.</strong> Weeks in this year are projected on weekends alone. The exchange normally circulates the next year in December; the daily sync will pull it in automatically, and these weeks will re-compute then.</div></div>';
+    var dates=Object.keys(c.holidays).sort();
+    var wd=dates.filter(function(d){ var w=dow(parseD(d)); return w!==0&&w!==6; });
+    var badge = c.status==="nse" ? '<span class="chip ok">pulled from NSE</span>'
+      : c.status==="manual" ? '<span class="chip info">entered by hand · protected from overwrite</span>'
+      : '<span class="chip mute">seeded with the app</span>';
+    return '<div class="card"><h2>'+y+'</h2>'+
+      '<div class="chips"><span class="chip ok">'+wd.length+' closures on trading days</span>'+
+      (dates.length-wd.length?'<span class="chip mute">'+(dates.length-wd.length)+' fall on a weekend</span>':'')+badge+'</div>'+
+      (c.source?'<p class="lede">'+esc(c.source)+(c.fetchedAt?' · '+esc(String(c.fetchedAt).slice(0,10)):'')+'</p>':'')+
+      '<div class="hollist">'+dates.map(function(d){
+        var w=dow(parseD(d)), weekend=(w===0||w===6);
+        return '<div class="hol-row"><div><span class="num">'+fmtD(d)+'</span> <span class="mini">'+DOWN[w]+(weekend?" · weekend, no effect":"")+'</span></div>'+
+          '<div style="color:var(--text-secondary);text-align:right">'+esc(c.holidays[d])+'</div></div>';
+      }).join("")+'</div></div>';
+  }).join("");
+}
+document.getElementById("calRefresh").addEventListener("click",function(){
+  if(!CFG.url){ toast("calRefreshMsg","Connect your Sheet first.","err"); return; }
+  toast("calRefreshMsg","Asking the backend to pull from NSE…");
+  setSyncUI("busy","Refreshing holidays…");
+  apiGet("refreshCalendars").then(function(res){
+    STATE.calendars=res.calendars||STATE.calendars;
+    STATE.calendarMeta=res.calendarMeta||STATE.calendarMeta;
+    applyCalendars(); cacheWrite(); recompute(); renderCal();
+    if(res.ok && res.result && res.result.years && res.result.years.length)
+      toast("calRefreshMsg","Updated from NSE: "+res.result.years.join(", ")+".","good");
+    else if(res.result && res.result.skipped)
+      toast("calRefreshMsg","Backend served its cache — last pull was under 20 hours ago.","good");
+    else
+      toast("calRefreshMsg","NSE could not be reached: "+((res.result&&res.result.error)||"unknown")+". Existing calendars are untouched.","err");
+  }).catch(function(e){ toast("calRefreshMsg","Request failed: "+e.message,"err"); })
+    .then(function(){ setSyncUI("idle", syncStatusText()); });
+});
+document.getElementById("calLoadBtn").addEventListener("click",function(){
+  var y=document.getElementById("calYear").value.trim(), c=CAL[y];
+  if(!c){ toast("calMsg","Nothing loaded for "+y+".","err"); return; }
+  document.getElementById("calSource").value=c.source||"";
+  document.getElementById("calPaste").value=Object.keys(c.holidays).sort().map(function(d){ return d+", "+c.holidays[d]; }).join("\n");
+  toast("calMsg","Loaded "+y+" into the box.","good");
+});
+document.getElementById("calSaveBtn").addEventListener("click",function(){
+  var y=document.getElementById("calYear").value.trim();
+  if(!/^\d{4}$/.test(y)){ toast("calMsg","Enter a four-digit year.","err"); return; }
+  if(!CFG.url){ toast("calMsg","Connect your Sheet first.","err"); return; }
+  var lines=document.getElementById("calPaste").value.split("\n"), hol={}, bad=[];
+  lines.forEach(function(ln){
+    ln=ln.trim(); if(!ln) return;
+    var mm=ln.match(/^(\d{4}-\d{2}-\d{2})\s*[,\t;|]?\s*(.*)$/);
+    if(!mm || mm[1].slice(0,4)!==y){ bad.push(ln); return; }
+    hol[mm[1]]=mm[2].trim()||"Trading holiday";
+  });
+  if(bad.length){ toast("calMsg","Could not read "+bad.length+" line(s) — first: "+bad[0],"err"); return; }
+  if(!Object.keys(hol).length){ toast("calMsg","No holidays found in the box.","err"); return; }
+  toast("calMsg","Saving "+y+" to your Sheet…");
+  apiPost({ op:"saveCalendar", year:y, holidays:hol, source:document.getElementById("calSource").value.trim()||"Entered manually" })
+    .then(function(res){
+      if(res && res.ok){
+        STATE.calendars=res.calendars||STATE.calendars;
+        applyCalendars(); cacheWrite(); recompute(); renderCal();
+        toast("calMsg","Saved "+Object.keys(hol).length+" holidays for "+y+". Every unpaid week re-computed.","good");
+      } else if(res && res.unverified){ toast("calMsg","Sent but not confirmed — press sync to verify.","err"); }
+      else toast("calMsg","Save failed: "+(res&&res.error||"unknown"),"err");
+    }).catch(function(e){ toast("calMsg","Save failed: "+e.message,"err"); });
+});
+</script>
+</body>
+</html>
